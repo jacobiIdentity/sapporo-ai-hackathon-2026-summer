@@ -222,3 +222,11 @@ export function resolve(facts: Facts): Resolution {
     known: ORDER.filter((k) => facts[k] !== null),
   }
 }
+
+/**
+ * 結論の同一性キー。同じ結論には同じ一文を割り当てるために使う。
+ * 文言を変えるとキーも変わり、事前生成した一文が欠けてテストが落ちる。
+ */
+export function keyOf(d: Extract<Decision, { status: 'decided' }>): string {
+  return `${d.plan}|${d.headline}|${d.reason}|${d.actions.join('/')}`
+}

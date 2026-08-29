@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
+import { sentenceFor } from '@/lib/sentence'
 
 const EMPTY: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
@@ -45,11 +46,8 @@ function toQuery(f: Facts): string {
   return q.toString()
 }
 
-type AiResult = { key: string; text: string | null }
-
 export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?: Facts }) {
   const [facts, setFacts] = useState<Facts>(initialFacts)
-  const [ai, setAi] = useState<AiResult | null>(null)
   const [copied, setCopied] = useState(false)
   // 在庫はモック。登録機能ができるまでは手で消せるだけ。
   const [stock, setStock] = useState({
@@ -69,26 +67,6 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
   }, [])
 
   const result = resolve(facts)
-  const key = JSON.stringify(facts)
-  const ready = ai?.key === key
-
-  // 結論が変わるたびに一文を取り直す。取れるまでは result.reason を出しておく。
-  useEffect(() => {
-    const facts_ = JSON.parse(key) as Facts
-    if (resolve(facts_).status !== 'decided') return
-    let alive = true
-    fetch('/api/decide', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ facts: facts_ }),
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d: { sentence?: string | null }) => alive && setAi({ key, text: d.sentence ?? null }))
-      .catch(() => alive && setAi({ key, text: null }))
-    return () => {
-      alive = false
-    }
-  }, [key])
 
   const read = async () => {
     setReading(true)
@@ -249,11 +227,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           </div>
 
           <div aria-live="polite" className="text-[15px]">
-            {ready ? (
-              <p>{ai?.text ?? result.reason}</p>
-            ) : (
-              <p className="text-muted">{result.reason}</p>
-            )}
+            <p>{sentenceFor(result) ?? result.reason}</p>
           </div>
 
           {result.skipped.length > 0 && (
@@ -278,12 +252,6 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           >
             この結論は違った
           </a>
-
-          {ready && ai?.text === null && (
-            <p className="text-xs text-muted">
-              通信できなかったので、手元の判断だけで結論を出しています。
-            </p>
-          )}
         </section>
       )}
 
