@@ -11,13 +11,41 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
 })
 
-test('材料が揃っていないときは、結論ではなく誰の何を待っているかを出す', () => {
+test('まだ決まらないときは、結論ではなく決め手になる1問だけを出す', () => {
   render(<DinnerDecider />)
 
-  expect(screen.getByText('あと4つで決まります')).toBeDefined()
+  expect(screen.getByText('これを聞けば決まります')).toBeDefined()
   expect(screen.getByText('夫：米を炊いたか')).toBeDefined()
-  expect(screen.getByText('妻：実家の残り物')).toBeDefined()
+  // 残りを羅列しない。出すのは1問だけ。
+  expect(screen.queryByText('妻：実家の残り物')).toBeNull()
+  expect(screen.queryByText('夫：寄り道して買えるか')).toBeNull()
   expect(screen.queryByText('結論')).toBeNull()
+})
+
+test('空腹度が分かると、次に聞くべきは実家の残り物に変わる', () => {
+  render(
+    <DinnerDecider
+      initialFacts={{ riceCooked: null, hunger: 'now', leftovers: null, detour: null }}
+    />,
+  )
+
+  expect(screen.getByText('妻：実家の残り物')).toBeDefined()
+  expect(screen.queryByText('夫：米を炊いたか')).toBeNull()
+})
+
+test('残り2つが結論を変えないなら、そこを聞かずに決着する', () => {
+  render(
+    <DinnerDecider
+      initialFacts={{ riceCooked: null, hunger: 'now', leftovers: true, detour: null }}
+    />,
+  )
+
+  expect(screen.getByText('結論')).toBeDefined()
+  expect(screen.getByText('実家の残り物で食べる')).toBeDefined()
+  expect(
+    screen.getByText(/米を炊いたかと寄り道して買えるかは、どちらでも結論が変わらないので聞きません。/),
+  ).toBeDefined()
+  expect(screen.queryByText('これを聞けば決まります')).toBeNull()
 })
 
 test('4つ揃うと結論と、誰が何をするかが出る', () => {

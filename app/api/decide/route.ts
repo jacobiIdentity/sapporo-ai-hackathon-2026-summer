@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { decide, type Facts } from '@/lib/decide'
+import { resolve, type Facts } from '@/lib/decide'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +18,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'invalid json' }, { status: 400 })
   }
 
-  const decision = decide(facts)
+  // 4つ揃っていなくても、結論が確定していれば一文を作る。
+  const decision = resolve(facts)
   if (decision.status !== 'decided') {
     return Response.json({ error: 'not decided yet' }, { status: 400 })
   }

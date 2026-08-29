@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { LABEL, OWNER, decide, type FactKey, type Facts } from '@/lib/decide'
+import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
 
 const EMPTY: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
@@ -33,14 +33,14 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
     })
   }, [])
 
-  const result = decide(facts)
+  const result = resolve(facts)
   const key = JSON.stringify(facts)
   const ready = ai?.key === key
 
   // 結論が変わるたびに一文を取り直す。取れるまでは result.reason を出しておく。
   useEffect(() => {
     const facts_ = JSON.parse(key) as Facts
-    if (decide(facts_).status !== 'decided') return
+    if (resolve(facts_).status !== 'decided') return
     let alive = true
     fetch('/api/decide', {
       method: 'POST',
@@ -170,16 +170,16 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
         </Card>
       </section>
 
-      {result.status === 'waiting' ? (
-        <section className="rounded-xl border border-line bg-surface p-5">
-          <p className="text-sm font-bold">あと{result.missing.length}つで決まります</p>
-          <ul className="mt-2 flex flex-col gap-1">
-            {result.missing.map((k) => (
-              <li key={k} className="text-sm text-muted">
-                {OWNER[k]}：{LABEL[k]}
-              </li>
-            ))}
-          </ul>
+      {result.status === 'asking' ? (
+        <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-5">
+          <p className="text-xs font-bold tracking-widest text-muted">これを聞けば決まります</p>
+          <p className="text-xl font-bold leading-tight">
+            {`${OWNER[result.ask]}：${LABEL[result.ask]}`}
+          </p>
+          <p className="text-sm text-muted">
+            いまの候補は{result.candidates.length}通り。
+            {result.known.length > 0 && `${result.known.length}つ分かっています。`}
+          </p>
         </section>
       ) : (
         <section className="flex flex-col gap-4 rounded-xl bg-success-soft p-5">
@@ -195,6 +195,12 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
               <p className="text-muted">{result.reason}</p>
             )}
           </div>
+
+          {result.skipped.length > 0 && (
+            <p className="text-sm font-medium text-muted">
+              {`${result.skipped.map((k) => LABEL[k]).join('と')}は、どちらでも結論が変わらないので聞きません。`}
+            </p>
+          )}
 
           <ul className="flex flex-col gap-2">
             {result.actions.map((a) => (

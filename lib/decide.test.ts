@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { decide, normalizeParsed, type Facts } from './decide'
+import { decide, normalizeParsed, resolve, type Facts } from './decide'
 
 const blank: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
@@ -113,5 +113,58 @@ describe('自由文から読み取った結果を、トグルの状態に変換�
       leftovers: null,
       detour: null,
     })
+  })
+})
+
+describe('4つ全部は要らない — 決着に必要な情報だけを求める', () => {
+  test('残り物あり＋もう限界なら、米と寄り道を知らなくても結論は変わらない', () => {
+    const r = resolve({ riceCooked: null, hunger: 'now', leftovers: true, detour: null })
+    expect(r.status).toBe('decided')
+    if (r.status !== 'decided') return
+    expect(r.plan).toBe('leftovers')
+    // 残り2つを聞く必要がないことを明示する
+    expect(r.skipped).toEqual(['riceCooked', 'detour'])
+  })
+
+  test('米あり＋残り物なし＋まだ平気なら、寄り道できるかを聞かずに家のごはんで決まる', () => {
+    const r = resolve({ riceCooked: true, hunger: 'later', leftovers: false, detour: null })
+    expect(r.status).toBe('decided')
+    if (r.status !== 'decided') return
+    expect(r.plan).toBe('home')
+    expect(r.skipped).toEqual(['detour'])
+  })
+
+  test('4つ揃っていれば skipped は空', () => {
+    const r = resolve({ riceCooked: false, hunger: 'now', leftovers: true, detour: true })
+    expect(r.status).toBe('decided')
+    if (r.status !== 'decided') return
+    expect(r.skipped).toEqual([])
+  })
+
+  test('まだ割れているときは、決め手になる1項目を名指しする', () => {
+    // 空腹度だけ既知。結論は残り物の有無で割れる。
+    const r = resolve({ riceCooked: null, hunger: 'now', leftovers: null, detour: null })
+    expect(r.status).toBe('asking')
+    if (r.status !== 'asking') return
+    expect(r.ask).toBe('leftovers')
+  })
+
+  test('名指しした1項目が分かれば、候補が減る', () => {
+    const before = resolve(blank)
+    const after = resolve({ ...blank, leftovers: true })
+    if (before.status !== 'asking' || after.status !== 'asking') throw new Error('both asking')
+    expect(after.candidates.length).toBeLessThan(before.candidates.length)
+  })
+
+  test('何も分かっていなくても、必ず1つだけ聞く', () => {
+    const r = resolve(blank)
+    expect(r.status).toBe('asking')
+    if (r.status !== 'asking') return
+    expect(['riceCooked', 'hunger', 'leftovers', 'detour']).toContain(r.ask)
+  })
+
+  test('決着済みなら聞かない', () => {
+    const r = resolve({ riceCooked: true, hunger: 'later', leftovers: false, detour: false })
+    expect(r.status).toBe('decided')
   })
 })
