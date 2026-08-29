@@ -77,7 +77,8 @@ export async function POST(req: Request) {
 
   try {
     const client = new Anthropic()
-    // 決まった形を抜くだけの仕事なので Haiku。Opus 5 の20分の1で足りる。
+    // 決まった形を抜くだけの仕事なので Haiku。Opus 5 の5分の1（$1/$5 対 $5/$25）。
+    // 実測は 0.45円/回、Opus 5 なら 2.2円/回。ただし Haiku は品目を落とすことがある。
     // Haiku 4.5 は effort 非対応（付けると400）なので、構造化出力で形だけ固定する。
     const response = await client.messages.create({
       model: 'claude-haiku-4-5',
