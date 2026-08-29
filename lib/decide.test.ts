@@ -20,7 +20,7 @@ describe('材料が揃うまでは結論を出さない', () => {
 })
 
 describe('揃った瞬間に結論が出る', () => {
-  test('昨日のケース: 米なし・すぐ食べたい・実家の残りあり → 残り物で即決、夫は寄り道しない', () => {
+  test('昨日のケース: 米なし・すぐ食べたい・冷蔵庫の残りあり → 残り物で即決、夫は寄り道しない', () => {
     const r = decide({ riceCooked: false, hunger: 'now', leftovers: true, detour: true })
     expect(r.status).toBe('decided')
     if (r.status !== 'decided') return

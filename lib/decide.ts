@@ -12,7 +12,7 @@ export type Facts = {
   riceCooked: boolean | null
   /** 妻と子の空腹度（妻が持っている情報） */
   hunger: Hunger | null
-  /** 実家の残り物があるか（妻が持っている情報。昨日は20通目で出てきた決定打） */
+  /** 冷蔵庫の残り物があるか（妻が持っている情報。昨日は20通目で出てきた決定打） */
   leftovers: boolean | null
   /** 夫が寄り道して買えるか（夫が持っている情報） */
   detour: boolean | null
@@ -37,7 +37,7 @@ export const OWNER: Record<FactKey, string> = {
 export const LABEL: Record<FactKey, string> = {
   riceCooked: '米を炊いたか',
   hunger: 'おなかの空き具合',
-  leftovers: '実家の残り物',
+  leftovers: '冷蔵庫の残り物',
   detour: '寄り道して買えるか',
 }
 
@@ -60,7 +60,7 @@ export function decide(facts: Facts): Decision {
     return {
       status: 'decided',
       plan: 'leftovers',
-      headline: '実家の残り物で食べる',
+      headline: '冷蔵庫の残り物で食べる',
       reason: urgent
         ? 'すぐ食べたい状態で、いま出せるものが家にあるため。'
         : '米が炊けていないので、いま出せるものを使うのが速いため。',

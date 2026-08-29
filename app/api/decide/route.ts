@@ -46,7 +46,7 @@ export async function POST(req: Request) {
             `やること: ${decision.actions.join(' / ')}`,
             `米を炊いた: ${facts.riceCooked ? 'はい' : 'いいえ'}`,
             `空腹度: ${facts.hunger}`,
-            `実家の残り物: ${facts.leftovers ? 'あり' : 'なし'}`,
+            `冷蔵庫の残り物: ${facts.leftovers ? 'あり' : 'なし'}`,
             `寄り道: ${facts.detour ? 'できる' : 'できない'}`,
           ].join('\n'),
         },

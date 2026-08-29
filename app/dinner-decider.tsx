@@ -111,7 +111,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
           rows={3}
-          placeholder="実家におにぎり弁当残ってる、米炊き忘れた、長女まだ食べてない、イオン寄れる"
+          placeholder="冷蔵庫におにぎり弁当残ってる、米炊き忘れた、長女まだ食べてない、イオン寄れる"
           className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[15px] placeholder:text-faint"
         />
         <button
@@ -217,6 +217,60 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           )}
         </section>
       )}
+
+
+      <section
+        aria-labelledby="next-title"
+        className="flex flex-col gap-3 rounded-xl border border-dashed border-line-strong bg-sunken p-5 text-muted"
+      >
+        <div className="flex items-center gap-2">
+          <h2 id="next-title" className="text-[15px] font-bold text-muted">
+            次にやること
+          </h2>
+          <span className="inline-flex h-5 items-center rounded-full bg-surface px-2 text-[10px] font-bold tracking-widest text-faint">
+            NOT TODAY
+          </span>
+        </div>
+
+        <p className="text-sm">買ったものを登録すると、上の3つが自動で埋まります。</p>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled
+            className="h-11 rounded-lg border border-dashed border-line-strong bg-surface px-4 text-[15px] font-medium text-faint"
+          >
+            レシートを撮る
+          </button>
+          <button
+            type="button"
+            disabled
+            className="h-11 rounded-lg border border-dashed border-line-strong bg-surface px-4 text-[15px] font-medium text-faint"
+          >
+            話して入力
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="text-xs tracking-widest text-faint">例</p>
+          <p className="rounded-lg bg-surface px-3 py-2">牛乳、卵、玉ねぎ、豚こま、食パン</p>
+          <p aria-hidden="true" className="text-center text-faint">↓</p>
+          <dl className="flex flex-col gap-1">
+            <div className="flex justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+              <dt>材料がある</dt>
+              <dd className="font-medium">自動</dd>
+            </div>
+            <div className="flex justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+              <dt>できている料理</dt>
+              <dd className="font-medium">なし</dd>
+            </div>
+            <div className="flex justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+              <dt>ごはんが炊けている</dt>
+              <dd className="font-medium">炊飯器の状態は別途</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
 
       <div className="flex gap-3">
         <button
