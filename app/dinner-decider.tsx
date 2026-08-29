@@ -416,18 +416,18 @@ function StockRow({
       {items.length === 0 ? (
         <p className="text-sm text-muted">なくなりました</p>
       ) : (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="-mr-4 flex flex-nowrap gap-2 overflow-x-auto pr-4">
           {items.map((name) => (
             <li
               key={name}
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm"
+              className="inline-flex h-9 flex-none items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm"
             >
-              {name}
+              <span className="whitespace-nowrap">{name}</span>
               <button
                 type="button"
                 onClick={() => onRemove(name)}
                 aria-label={`${name}を消す`}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-faint"
+                className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-full text-faint"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />
@@ -435,6 +435,13 @@ function StockRow({
               </button>
             </li>
           ))}
+          {/* 上位3つだけ出している。続きがあることだけ示す。 */}
+          <li
+            aria-hidden="true"
+            className="inline-flex h-9 flex-none items-center px-2 text-sm text-faint"
+          >
+            …
+          </li>
         </ul>
       )}
     </div>
