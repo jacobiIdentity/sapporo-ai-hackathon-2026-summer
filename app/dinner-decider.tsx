@@ -111,7 +111,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
           rows={3}
-          placeholder="実家におにぎり弁当残ってる、米炊き忘れた、凪まだ食べてない、イオン寄れる"
+          placeholder="実家におにぎり弁当残ってる、米炊き忘れた、長女まだ食べてない、イオン寄れる"
           className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[15px] placeholder:text-faint"
         />
         <button
