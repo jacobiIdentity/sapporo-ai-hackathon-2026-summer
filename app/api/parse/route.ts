@@ -1,7 +1,27 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { normalizeParsed, type Facts } from '@/lib/decide'
+import { createLimiter } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+// 1人あたりの連打制限。読み取りは書き直しても数回で足りる。
+const perClient = createLimiter({ limit: 8, windowMs: 60_000 })
+
+// 全体の上限。API課金を守るための最後の砦で、1人が回線を変えても効く。
+const overall = createLimiter({ limit: 120, windowMs: 60 * 60_000, maxKeys: 1 })
+
+/** Vercelは x-forwarded-for に実クライアントIPを入れる。無ければ全員同じ枠に入る。 */
+function clientKey(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for')
+  return xff?.split(',')[0]?.trim() || 'unknown'
+}
+
+function tooMany(retryAfterSec: number) {
+  return Response.json(
+    { error: 'rate_limited', retryAfterSec },
+    { status: 429, headers: { 'retry-after': String(retryAfterSec) } },
+  )
+}
 
 const SYSTEM = `夫婦の夕食メモから、4項目だけを読み取ってJSONで返します。
 
@@ -19,6 +39,10 @@ d: 帰りに店へ寄れるか。寄れる=1 / 寄れない=0
 const DEMO: Facts = { riceCooked: false, hunger: 'now', leftovers: true, detour: true }
 
 export async function POST(req: Request) {
+  const now = Date.now()
+  const mine = perClient(clientKey(req), now)
+  if (!mine.ok) return tooMany(mine.retryAfterSec)
+
   let text: string
   let demo = false
   try {
@@ -40,6 +64,9 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: 'unavailable' }, { status: 503 })
   }
+
+  const budget = overall('all', now)
+  if (!budget.ok) return tooMany(budget.retryAfterSec)
 
   try {
     const client = new Anthropic()

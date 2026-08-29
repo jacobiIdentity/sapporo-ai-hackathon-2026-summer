@@ -56,7 +56,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
   })
   const [memo, setMemo] = useState('')
   const [reading, setReading] = useState(false)
-  const [readError, setReadError] = useState(false)
+  const [readError, setReadError] = useState<'none' | 'failed' | 'busy'>('none')
 
   const update = useCallback(<K extends FactKey>(key: K, value: Facts[K]) => {
     setFacts((prev) => {
@@ -70,7 +70,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
 
   const read = async () => {
     setReading(true)
-    setReadError(false)
+    setReadError('none')
     try {
       const res = await fetch('/api/parse', {
         method: 'POST',
@@ -80,6 +80,10 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           demo: new URLSearchParams(window.location.search).get('demo') === '1',
         }),
       })
+      if (res.status === 429) {
+        setReadError('busy')
+        return
+      }
       if (!res.ok) throw new Error(String(res.status))
       const { facts: parsed } = (await res.json()) as { facts: Facts }
       // 読み取れた項目だけ上書きする。null はトグルを未選択のまま残す。
@@ -94,7 +98,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
         return next
       })
     } catch {
-      setReadError(true)
+      setReadError('failed')
     } finally {
       setReading(false)
     }
@@ -161,9 +165,11 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           {reading ? '読み取っています…' : '読み取る'}
         </button>
         <p aria-live="polite" className="text-xs text-muted">
-          {readError
-            ? '読み取れませんでした。下から選んでください。'
-            : '読み取った内容は下のトグルに入ります。違っていたら押し直してください。'}
+          {readError === 'busy'
+            ? '読み取りの回数制限に達しました。少し待つか、下から選んでください。'
+            : readError === 'failed'
+              ? '読み取れませんでした。下から選んでください。'
+              : '読み取った内容は下のトグルに入ります。違っていたら押し直してください。'}
         </p>
       </section>
 
