@@ -5,6 +5,36 @@ import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
 
 const EMPTY: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
+const REPO = 'https://github.com/jacobiIdentity/sapporo-ai-hackathon-2026-summer'
+
+/**
+ * 不満の宛先を人ではなくルールにする。
+ * 押すとGitHubのissue作成画面が、そのときの条件つきで開く。
+ * サーバもトークンも要らない（GitHubの prefill URL を組み立てるだけ）。
+ */
+function issueUrl(facts: Facts, headline: string): string {
+  const q = new URLSearchParams({
+    title: `この結論は違った: ${headline}`,
+    body: [
+      '## そのときの条件',
+      '',
+      `- 米を炊いたか: ${facts.riceCooked === null ? '未回答' : facts.riceCooked ? '炊いた' : '炊いてない'}`,
+      `- おなかの空き具合: ${facts.hunger ?? '未回答'}`,
+      `- 冷蔵庫の残り物: ${facts.leftovers === null ? '未回答' : facts.leftovers ? 'ある' : 'ない'}`,
+      `- 寄り道: ${facts.detour === null ? '未回答' : facts.detour ? '寄れる' : '寄れない'}`,
+      '',
+      `## 出た結論`,
+      '',
+      headline,
+      '',
+      '## 本当はどうしたかったか',
+      '',
+      '（ここに書く）',
+    ].join('\n'),
+  })
+  return `${REPO}/issues/new?${q.toString()}`
+}
+
 /** URLに全状態を載せる。LINEに貼れば相手の画面に自分の入力がそのまま出る。 */
 function toQuery(f: Facts): string {
   const q = new URLSearchParams()
@@ -209,6 +239,15 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
               </li>
             ))}
           </ul>
+
+          <a
+            href={issueUrl(facts, result.headline)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-11 items-center justify-center self-start rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-foreground"
+          >
+            この結論は違った
+          </a>
 
           {ready && ai?.text === null && (
             <p className="text-xs text-muted">

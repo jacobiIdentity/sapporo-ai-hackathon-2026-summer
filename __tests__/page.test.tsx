@@ -64,3 +64,21 @@ test('選択済みの回答は押された状態として公開される', () =>
   expect(screen.getByRole('button', { name: '炊いた' }).getAttribute('aria-pressed')).toBe('true')
   expect(screen.getByRole('button', { name: '炊いてない' }).getAttribute('aria-pressed')).toBe('false')
 })
+
+test('結論に納得できないとき、条件つきでルールへ異議を出せる', () => {
+  render(
+    <DinnerDecider
+      initialFacts={{ riceCooked: false, hunger: 'now', leftovers: true, detour: true }}
+    />,
+  )
+
+  const link = screen.getByRole('link', { name: 'この結論は違った' })
+  const href = decodeURIComponent(link.getAttribute('href') ?? '')
+
+  // 宛先はルール（リポジトリ）であって、相手ではない
+  expect(href).toContain('/issues/new')
+  // そのときの条件が最初から入っている＝あとで再現できる
+  expect(href).toContain('冷蔵庫の残り物で食べる')
+  expect(href).toContain('炊いてない')
+  expect(href).toContain('ある')
+})
