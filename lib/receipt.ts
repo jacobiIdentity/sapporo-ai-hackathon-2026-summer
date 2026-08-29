@@ -12,14 +12,17 @@ const MAX_NAME_LENGTH = 20
 /** 画面は上位3つしか出さない。多く抱えても意味がないので上限を切る。 */
 const MAX_ITEMS = 20
 
-export function normalizeIngredients(raw: unknown): string[] {
-  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
-  if (!Array.isArray(o.ingredients)) return []
+/**
+ * 外から来た品目名の並びを、画面に出せる形に落とす。
+ * 読み取り結果と、共有URLの両方がここを通る。どちらも他人が作れる入力。
+ */
+export function cleanNames(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
 
   const seen = new Set<string>()
   const out: string[] = []
 
-  for (const item of o.ingredients) {
+  for (const item of items) {
     if (typeof item !== 'string') continue
     const name = item.trim()
     if (name === '' || name.length > MAX_NAME_LENGTH || seen.has(name)) continue
@@ -29,4 +32,9 @@ export function normalizeIngredients(raw: unknown): string[] {
   }
 
   return out
+}
+
+export function normalizeIngredients(raw: unknown): string[] {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
+  return cleanNames(o.ingredients)
 }

@@ -1,5 +1,6 @@
 import DinnerDecider from './dinner-decider'
 import type { Facts, Hunger } from '@/lib/decide'
+import { parseStock } from '@/lib/stock'
 
 /** 共有されたURLをそのまま初期状態にする。相手の入力が最初から入った状態で開く。 */
 function fromParams(params: Record<string, string | string[] | undefined>): Facts {
@@ -19,5 +20,6 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  return <DinnerDecider initialFacts={fromParams(await searchParams)} />
+  const params = await searchParams
+  return <DinnerDecider initialFacts={fromParams(params)} initialStock={parseStock(params)} />
 }

@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
 import { shrinkToDataUrl } from '@/lib/image'
 import { sentenceFor } from '@/lib/sentence'
+import { INITIAL_STOCK, stockQuery, type Stock } from '@/lib/stock'
 
 const EMPTY: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
@@ -37,24 +38,43 @@ function issueUrl(facts: Facts, headline: string): string {
   return `${REPO}/issues/new?${q.toString()}`
 }
 
-/** URLに全状態を載せる。LINEに貼れば相手の画面に自分の入力がそのまま出る。 */
-function toQuery(f: Facts): string {
-  const q = new URLSearchParams()
+/**
+ * URLに全状態を載せる。LINEに貼れば相手の画面に自分の入力がそのまま出る。
+ *
+ * いまのURLを土台にする。この関数が知らない指定（?demo=1 など）を消さないため。
+ */
+function toQuery(f: Facts, stock: Stock, current: string): string {
+  const q = new URLSearchParams(current)
+  // この関数が管理するキーだけ一度消す。残りは触らない。
+  for (const key of ['r', 'h', 'l', 'd', 'i', 'k']) q.delete(key)
+
   if (f.riceCooked !== null) q.set('r', f.riceCooked ? '1' : '0')
   if (f.hunger !== null) q.set('h', f.hunger)
   if (f.leftovers !== null) q.set('l', f.leftovers ? '1' : '0')
   if (f.detour !== null) q.set('d', f.detour ? '1' : '0')
+
+  // 在庫は材料と料理を必ず一緒に載せる。片方だけだと、相手の画面で
+  // もう片方が初期のモックのまま残り、共有された在庫に見えてしまう。
+  const shared = stockQuery(stock)
+  if (shared) {
+    q.set('i', shared.i)
+    q.set('k', shared.k)
+  }
+
   return q.toString()
 }
 
-export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?: Facts }) {
+export default function DinnerDecider({
+  initialFacts = EMPTY,
+  initialStock = INITIAL_STOCK,
+}: {
+  initialFacts?: Facts
+  initialStock?: Stock
+}) {
   const [facts, setFacts] = useState<Facts>(initialFacts)
   const [copied, setCopied] = useState(false)
-  // 在庫はモック。登録機能ができるまでは手で消せるだけ。
-  const [stock, setStock] = useState({
-    ingredients: ['卵', '玉ねぎ', '豚こま'],
-    dishes: ['おにぎり弁当', 'ひじき煮', '味噌汁'],
-  })
+  // 在庫の登録はレシートだけ。あとは手で消せる。
+  const [stock, setStock] = useState<Stock>(initialStock)
   const [memo, setMemo] = useState('')
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<'none' | 'failed' | 'busy'>('none')
@@ -62,12 +82,14 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
   const [scanError, setScanError] = useState<'none' | 'failed' | 'busy' | 'empty'>('none')
 
   const update = useCallback(<K extends FactKey>(key: K, value: Facts[K]) => {
-    setFacts((prev) => {
-      const next = { ...prev, [key]: value }
-      window.history.replaceState(null, '', `?${toQuery(next)}`)
-      return next
-    })
+    setFacts((prev) => ({ ...prev, [key]: value }))
   }, [])
+
+  // URLが状態。4項目と在庫が変わるたびに書き戻す。書き戻し口をここ1つに絞る。
+  useEffect(() => {
+    const q = toQuery(facts, stock, window.location.search)
+    window.history.replaceState(null, '', q === '' ? window.location.pathname : `?${q}`)
+  }, [facts, stock])
 
   const result = resolve(facts)
 
@@ -90,16 +112,12 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
       if (!res.ok) throw new Error(String(res.status))
       const { facts: parsed } = (await res.json()) as { facts: Facts }
       // 読み取れた項目だけ上書きする。null はトグルを未選択のまま残す。
-      setFacts((prev) => {
-        const next: Facts = {
-          riceCooked: parsed.riceCooked ?? prev.riceCooked,
-          hunger: parsed.hunger ?? prev.hunger,
-          leftovers: parsed.leftovers ?? prev.leftovers,
-          detour: parsed.detour ?? prev.detour,
-        }
-        window.history.replaceState(null, '', `?${toQuery(next)}`)
-        return next
-      })
+      setFacts((prev) => ({
+        riceCooked: parsed.riceCooked ?? prev.riceCooked,
+        hunger: parsed.hunger ?? prev.hunger,
+        leftovers: parsed.leftovers ?? prev.leftovers,
+        detour: parsed.detour ?? prev.detour,
+      }))
     } catch {
       setReadError('failed')
     } finally {
@@ -440,10 +458,7 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
         </button>
         <button
           type="button"
-          onClick={() => {
-            setFacts(EMPTY)
-            window.history.replaceState(null, '', window.location.pathname)
-          }}
+          onClick={() => setFacts(EMPTY)}
           className="h-11 rounded-lg border border-line-strong bg-surface px-4 font-medium"
         >
           リセット

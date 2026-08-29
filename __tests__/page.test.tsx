@@ -14,6 +14,8 @@ afterEach(cleanup)
 beforeEach(() => {
   // 一文生成はネットワーク越し。ここでは結論の表示だけを検証したいので黙らせる。
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+  // URLは state なので、前のテストの残りが次を汚す。
+  window.history.replaceState(null, '', '/')
 })
 
 test('まだ決まらないときは、結論ではなく決め手になる1問だけを出す', () => {
@@ -241,4 +243,63 @@ test('回数制限に当たったら、その旨を出す', async () => {
   pickReceipt()
 
   await waitFor(() => expect(screen.getByText(/回数制限/)).toBeDefined())
+})
+
+// ---- 在庫の共有（URLが状態） ----
+
+test('共有されたURLの在庫が、そのまま画面に出る', () => {
+  render(
+    <DinnerDecider initialStock={{ ingredients: ['牛乳', 'にんじん'], dishes: ['カレー'] }} />,
+  )
+
+  expect(screen.getByText('牛乳')).toBeDefined()
+  expect(screen.getByText('カレー')).toBeDefined()
+  // 初期のモックは出ない
+  expect(screen.queryByText('玉ねぎ')).toBeNull()
+  expect(screen.queryByText('おにぎり弁当')).toBeNull()
+})
+
+test('レシートを読み取ると、材料がURLに載る。送れば相手にも出る', async () => {
+  stubFetch(200, { ingredients: ['牛乳', 'にんじん'] })
+  render(<DinnerDecider />)
+
+  pickReceipt()
+
+  await waitFor(() => expect(window.location.search).toContain('i='))
+  const q = new URLSearchParams(window.location.search)
+  expect(q.get('i')).toBe('牛乳,にんじん')
+  // 料理は触っていないが、材料だけ載せると相手の画面で料理がモックのまま残る
+  expect(q.get('k')).toBe('おにぎり弁当,ひじき煮,味噌汁')
+})
+
+test('できている料理を全部消すと、空であることがURLに載る', () => {
+  render(<DinnerDecider />)
+
+  for (const name of ['おにぎり弁当', 'ひじき煮', '味噌汁']) {
+    fireEvent.click(screen.getByLabelText(`${name}を消す`))
+  }
+
+  const q = new URLSearchParams(window.location.search)
+  expect(q.get('k')).toBe('')
+  expect(q.get('l')).toBe('0')
+})
+
+test('在庫が初期のモックのままなら、URLに載せない', () => {
+  render(<DinnerDecider />)
+
+  fireEvent.click(screen.getByRole('button', { name: '炊いた' }))
+
+  const q = new URLSearchParams(window.location.search)
+  expect(q.get('r')).toBe('1')
+  expect(q.get('i')).toBeNull()
+  expect(q.get('k')).toBeNull()
+})
+
+test('URLを書き換えても demo=1 は消さない。消すと会場の保険が外れる', () => {
+  window.history.replaceState(null, '', '/?demo=1')
+  render(<DinnerDecider />)
+
+  fireEvent.click(screen.getByRole('button', { name: '炊いた' }))
+
+  expect(new URLSearchParams(window.location.search).get('demo')).toBe('1')
 })
