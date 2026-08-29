@@ -138,9 +138,13 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
         <StockRow
           label="できている料理"
           items={stock.dishes}
-          onRemove={(name) =>
-            setStock((p) => ({ ...p, dishes: p.dishes.filter((i) => i !== name) }))
-          }
+          onRemove={(name) => {
+            const dishes = stock.dishes.filter((i) => i !== name)
+            setStock((p) => ({ ...p, dishes }))
+            // 在庫を触った瞬間だけ回答に落とす。初期表示では埋めない（URLの状態を上書きしないため）。
+            // 以後もトグルは自由に押し直せる。
+            update('leftovers', dishes.length > 0)
+          }}
         />
       </section>
 

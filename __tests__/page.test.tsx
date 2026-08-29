@@ -106,3 +106,49 @@ test('全部消すと「なくなりました」になる', () => {
 
   expect(screen.getByText('なくなりました')).toBeDefined()
 })
+
+test('できている料理を全部消すと、冷蔵庫の残り物が「ない」に変わる', () => {
+  render(<DinnerDecider initialFacts={{ riceCooked: true, hunger: 'now', leftovers: null, detour: false }} />)
+
+  for (const name of ['おにぎり弁当', 'ひじき煮', '味噌汁']) {
+    fireEvent.click(screen.getByLabelText(`${name}を消す`))
+  }
+
+  expect(screen.getByRole('button', { name: 'ない' }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('料理が1つでも残っていれば、冷蔵庫の残り物は「ある」になる', () => {
+  render(<DinnerDecider />)
+
+  fireEvent.click(screen.getByLabelText('ひじき煮を消す'))
+
+  expect(screen.getByRole('button', { name: 'ある' }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('材料を消しても冷蔵庫の残り物の回答は変わらない', () => {
+  render(<DinnerDecider />)
+
+  fireEvent.click(screen.getByLabelText('卵を消す'))
+
+  expect(screen.getByRole('button', { name: 'ある' }).getAttribute('aria-pressed')).toBe('false')
+  expect(screen.getByRole('button', { name: 'ない' }).getAttribute('aria-pressed')).toBe('false')
+})
+
+test('在庫が空でも、手でトグルし直せる', () => {
+  render(<DinnerDecider />)
+
+  for (const name of ['おにぎり弁当', 'ひじき煮', '味噌汁']) {
+    fireEvent.click(screen.getByLabelText(`${name}を消す`))
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'ある' }))
+
+  expect(screen.getByRole('button', { name: 'ある' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: 'ない' }).getAttribute('aria-pressed')).toBe('false')
+})
+
+test('初期表示では、在庫があっても冷蔵庫の残り物は未回答のまま', () => {
+  render(<DinnerDecider />)
+
+  expect(screen.getByRole('button', { name: 'ある' }).getAttribute('aria-pressed')).toBe('false')
+  expect(screen.getByRole('button', { name: 'ない' }).getAttribute('aria-pressed')).toBe('false')
+})
