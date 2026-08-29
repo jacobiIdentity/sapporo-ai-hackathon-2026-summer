@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import DinnerDecider from '@/app/dinner-decider'
 import type { Facts } from '@/lib/decide'
@@ -81,4 +81,28 @@ test('結論に納得できないとき、条件つきでルールへ異議を�
   expect(href).toContain('冷蔵庫の残り物で食べる')
   expect(href).toContain('炊いてない')
   expect(href).toContain('ある')
+})
+
+test('家にあるものは材料・料理とも3つずつ出て、×で消える', () => {
+  render(<DinnerDecider />)
+
+  expect(screen.getByText('材料（上位3つ）')).toBeDefined()
+  expect(screen.getByText('できている料理（上位3つ）')).toBeDefined()
+  expect(screen.getByText('おにぎり弁当')).toBeDefined()
+
+  fireEvent.click(screen.getByRole('button', { name: 'おにぎり弁当を消す' }))
+
+  expect(screen.queryByText('おにぎり弁当')).toBeNull()
+  // 他の項目は残る
+  expect(screen.getByText('ひじき煮')).toBeDefined()
+})
+
+test('全部消すと「なくなりました」になる', () => {
+  render(<DinnerDecider />)
+
+  for (const name of ['卵', '玉ねぎ', '豚こま']) {
+    fireEvent.click(screen.getByRole('button', { name: `${name}を消す` }))
+  }
+
+  expect(screen.getByText('なくなりました')).toBeDefined()
 })

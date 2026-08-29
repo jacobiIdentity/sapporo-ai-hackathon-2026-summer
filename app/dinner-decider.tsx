@@ -51,6 +51,11 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
   const [facts, setFacts] = useState<Facts>(initialFacts)
   const [ai, setAi] = useState<AiResult | null>(null)
   const [copied, setCopied] = useState(false)
+  // 在庫はモック。登録機能ができるまでは手で消せるだけ。
+  const [stock, setStock] = useState({
+    ingredients: ['卵', '玉ねぎ', '豚こま'],
+    dishes: ['おにぎり弁当', 'ひじき煮', '味噌汁'],
+  })
   const [memo, setMemo] = useState('')
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState(false)
@@ -131,6 +136,31 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
           4つ埋まると結論が出ます。埋めたらこの画面のURLを相手に送ってください。
         </p>
       </header>
+
+
+      <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-[15px] font-bold">いま家にあるもの</h2>
+          <span className="inline-flex h-5 items-center rounded-full bg-sunken px-2 text-[10px] font-bold tracking-widest text-faint">
+            MOCK
+          </span>
+        </div>
+
+        <StockRow
+          label="材料"
+          items={stock.ingredients}
+          onRemove={(name) =>
+            setStock((p) => ({ ...p, ingredients: p.ingredients.filter((i) => i !== name) }))
+          }
+        />
+        <StockRow
+          label="できている料理"
+          items={stock.dishes}
+          onRemove={(name) =>
+            setStock((p) => ({ ...p, dishes: p.dishes.filter((i) => i !== name) }))
+          }
+        />
+      </section>
 
       <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
         <label htmlFor="memo" className="text-[15px] font-medium">
@@ -368,6 +398,46 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
         </button>
       </div>
     </main>
+  )
+}
+
+function StockRow({
+  label,
+  items,
+  onRemove,
+}: {
+  label: string
+  items: string[]
+  onRemove: (name: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-faint">{`${label}（上位3つ）`}</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted">なくなりました</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {items.map((name) => (
+            <li
+              key={name}
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm"
+            >
+              {name}
+              <button
+                type="button"
+                onClick={() => onRemove(name)}
+                aria-label={`${name}を消す`}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-faint"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M3 3l8 8M11 3l-8 8" />
+                </svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
