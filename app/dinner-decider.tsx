@@ -309,6 +309,43 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
             </div>
           </dl>
         </div>
+
+        <hr className="border-0 border-t border-dashed border-line-strong" />
+
+        <div className="flex flex-col gap-3">
+          <p className="text-[15px] font-bold text-muted">17:00に先回りする</p>
+          <p className="text-sm">
+            空腹になる前に「今日はこれで決まりそうです」を出せば、交渉そのものが起きません。
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-sm">
+              <span>通知する時刻</span>
+              <span className="font-medium tabular-nums">17:00</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-sm">
+              <span>曜日</span>
+              <span className="font-medium">平日のみ</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-sm">
+              <span>受け取る人</span>
+              <span className="font-medium">夫・妻</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled
+            className="h-11 rounded-lg border border-dashed border-line-strong bg-surface px-4 text-[15px] font-medium text-faint"
+          >
+            通知をオンにする
+          </button>
+
+          <p className="text-xs">
+            iOSのWeb Pushはホーム画面への追加が必要です。今日はiPhoneのショートカットで
+            17:00にこの画面を開いて代用しています。
+          </p>
+        </div>
       </section>
 
       <div className="flex gap-3">
