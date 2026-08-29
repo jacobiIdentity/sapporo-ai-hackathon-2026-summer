@@ -20,17 +20,20 @@ const DEMO: Facts = { riceCooked: false, hunger: 'now', leftovers: true, detour:
 
 export async function POST(req: Request) {
   let text: string
+  let demo = false
   try {
-    const body = (await req.json()) as { text?: unknown }
+    const body = (await req.json()) as { text?: unknown; demo?: unknown }
     if (typeof body?.text !== 'string' || body.text.trim() === '') {
       return Response.json({ error: 'text required' }, { status: 400 })
     }
     text = body.text.slice(0, 2000)
+    demo = body.demo === true
   } catch {
     return Response.json({ error: 'invalid json' }, { status: 400 })
   }
 
-  if (process.env.NEXT_PUBLIC_DEMO_MODE === '1') {
+  // URLに ?demo=1 が付いていればLLMを呼ばない。回線が不安な会場での保険。
+  if (demo || process.env.NEXT_PUBLIC_DEMO_MODE === '1') {
     return Response.json({ facts: DEMO }, { status: 200 })
   }
 

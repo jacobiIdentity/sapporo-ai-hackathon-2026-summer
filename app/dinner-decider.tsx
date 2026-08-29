@@ -62,7 +62,10 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: memo }),
+        body: JSON.stringify({
+          text: memo,
+          demo: new URLSearchParams(window.location.search).get('demo') === '1',
+        }),
       })
       if (!res.ok) throw new Error(String(res.status))
       const { facts: parsed } = (await res.json()) as { facts: Facts }
