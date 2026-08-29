@@ -24,8 +24,8 @@
 |---|---|
 | 本番 | https://sapporo-ai-hackathon-2026-summer.vercel.app/ |
 | GitHub | https://github.com/jacobiIdentity/sapporo-ai-hackathon-2026-summer （public） |
-| HEAD | `5a41a31` |
-| 検証 | テスト96件 / lint / build すべてグリーン、作業ツリークリーン、本番全経路確認済み |
+| HEAD | `bbdfcee` |
+| 検証 | テスト97件 / lint / build すべてグリーン、作業ツリークリーン、本番全経路確認済み |
 
 デモ用URL：
 
