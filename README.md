@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 今日の夕食
 
-## Getting Started
+平日19時台の「今日の夕食どうする」を、**1往復で終わらせる**アプリ。
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 課題（実データ）
+
+対象は私の妻。架空の属性は足していない。
+
+昨日のLINE履歴：**19:18〜19:20 の約2分間に22通**。
+
+決着が長引く原因は、意欲でも段取りでもなく **判断材料が3人に散っていること**。
+
+| 材料 | 持っている人 | 昨日どうだったか |
+|---|---|---|
+| 米を炊いたか | 夫 | 炊き忘れていた |
+| 妻と子の空腹度 | 妻 | もう限界 |
+| 実家の残り物（おにぎり弁当） | 妻 | **20通目付近でようやく出てきた** |
+| 寄り道して買えるか | 夫 | 寄れた |
+
+決定打（実家の残り物）が最後まで出てこないので、20往復してから
+「じゃあそれで」になる。確認できた直近2日とも「ごはん」が問題になっていた。
+
+---
+
+## 解き方
+
+**4つ揃うまで結論を出さない。揃った瞬間に1つだけ出す。**
+
+- 各自が自分の持っている材料をタップする
+- 揃っていない間は「誰の何を待っているか」だけを表示する
+- 揃った瞬間、結論・理由・**誰が何をするか**が確定する
+- 状態はURLに入っているので、**そのままLINEに貼れば相手の画面に自分の入力が出る**
+
+カレンダー共有アプリでは解けない。これは予定ではなく、
+在庫・空腹・位置を統合する「その日の意思決定」だから。
+
+---
+
+## AIの役割
+
+AIは**決定しない**。決定はルール（`lib/decide.ts`）が行う。
+
+AIは確定した結論を「そのままLINEに送れる日本語の一文」に言い換えるだけ。
+
+> 今夜は実家の残り物で済ませます。私が出しますので、買い物はせずまっすぐ帰ってください。
+
+新しい提案・条件・献立は足さない。**APIが落ちてもルールの結論が必ず表示される。**
+
+---
+
+## 判断ルール
+
+| 条件 | 結論 |
+|---|---|
+| 残り物あり ＋（すぐ食べたい or 米なし） | 実家の残り物で食べる |
+| 米あり | 家のごはん（急ぎでなく寄れるならおかず1品だけ買う） |
+| 米なし ＋ 寄り道できる | 夫が買って帰る |
+| 米なし ＋ 残り物なし ＋ 寄れない | 出前をとる |
+
+「残り物が最優先」は昨日の実データから来ている。いま出せるものが家にあるなら、
+それが最速で、20往復する理由がない。
+
+---
+
+## 構成
+
+```
+lib/decide.ts          判断ロジック（純粋関数・テストで仕様固定）
+lib/decide.test.ts     8件
+app/page.tsx           URLを読む Server Component
+app/dinner-decider.tsx 画面本体
+app/api/decide/route.ts Claude呼び出し（失敗時は静かに諦める）
+__tests__/page.test.tsx 画面の振る舞い 3件
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Next.js App Router / TypeScript / Tailwind CSS / Vitest / Anthropic SDK (`claude-opus-5`)。
+DBなし、認証なし、リアルタイム同期なし。**URLが共有状態そのもの。**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 動かす
 
-## Learn More
+```bash
+npm install
+echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env.local
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+検証:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test        # 11件
+npm run lint
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+昨日のケースを直接開く:
 
-## Deploy on Vercel
+```
+/?r=0&h=now&l=1&d=1
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## これから
+
+- 残り物を「あるか」ではなく「何があるか」まで持つ（昨日の決定打はおにぎりだった）
+- 帰宅時刻の実測を夫の位置から自動で入れ、`寄り道できるか` を聞かずに埋める
+- 決まった結論の履歴から、翌週の米を炊く判断を先回りする
