@@ -60,7 +60,7 @@ test('大きすぎる画像は413。クライアントで縮小し損ねた場�
 test('demo指定ならLLMを呼ばずに固定の材料を返す', async () => {
   const res = await post({ data: IMAGE, mediaType: 'image/jpeg', demo: true }, '1.0.0.5')
   expect(res.status).toBe(200)
-  expect((await res.json()).ingredients.length).toBeGreaterThan(0)
+  expect(await res.json()).toEqual({ ingredients: ['牛乳', '卵', 'たまねぎ', '豚こま', '食パン'] })
   expect(create).not.toHaveBeenCalled()
 })
 
@@ -126,6 +126,6 @@ test('同じ相手が連打すると429を返す。画像は文字より高い�
     codes.push((await post({ data: IMAGE, mediaType: 'image/jpeg' }, '9.9.9.9')).status)
   }
 
-  expect(codes).toContain(429)
-  expect(codes.filter((c) => c === 200).length).toBeLessThan(6)
+  // 上限は4回/分。5回目からは必ず止まる。
+  expect(codes).toEqual([200, 200, 200, 200, 429, 429])
 })

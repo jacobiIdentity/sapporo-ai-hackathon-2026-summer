@@ -5,7 +5,7 @@ import type { Facts } from '@/lib/decide'
 
 // canvas と Image は jsdom に無い。縮小はブラウザAPIそのものなので、ここでは外す。
 vi.mock('@/lib/image', () => ({
-  shrinkToDataUrl: vi.fn(async () => ({ data: 'AAAA', mediaType: 'image/jpeg' })),
+  shrinkToBase64: vi.fn(async () => ({ data: 'AAAA', mediaType: 'image/jpeg' })),
 }))
 
 // globals:false のため自動クリーンアップが走らない。残留DOMが次のテストを汚す。
@@ -90,18 +90,19 @@ test('結論に納得できないとき、条件つきでルールへ異議を�
   expect(href).toContain('ある')
 })
 
-test('家にあるものは材料・料理とも3つずつ出て、×で消える', () => {
+test('家にあるものは材料・料理とも全部出て、×で消える', () => {
   render(<DinnerDecider />)
 
-  expect(screen.getByText('材料（上位3つ）')).toBeDefined()
-  expect(screen.getByText('できている料理（上位3つ）')).toBeDefined()
-  expect(screen.getByText('おにぎり弁当')).toBeDefined()
+  expect(screen.getByText('材料')).toBeDefined()
+  for (const name of ['卵', '玉ねぎ', '豚こま', 'おにぎり弁当', 'ひじき煮', '味噌汁']) {
+    expect(screen.getByLabelText(`${name}を消す`)).toBeDefined()
+  }
 
   fireEvent.click(screen.getByRole('button', { name: 'おにぎり弁当を消す' }))
 
-  expect(screen.queryByText('おにぎり弁当')).toBeNull()
+  expect(screen.queryByLabelText('おにぎり弁当を消す')).toBeNull()
   // 他の項目は残る
-  expect(screen.getByText('ひじき煮')).toBeDefined()
+  expect(screen.getByLabelText('ひじき煮を消す')).toBeDefined()
 })
 
 test('全部消すと「なくなりました」になる', () => {
@@ -192,16 +193,17 @@ test('レシートを読み取ると、材料が読み取った中身に入れ�
   expect(urls).toEqual(['/api/receipt'])
 })
 
-test('材料は上位3つまで出す。読み取れた数が多くても画面は増えない', async () => {
+test('読み取れた材料は全部出す。どれも×で消せる', async () => {
   stubFetch(200, { ingredients: ['牛乳', '卵', 'たまねぎ', '豚こま', '食パン'] })
   render(<DinnerDecider />)
 
   pickReceipt()
 
-  await waitFor(() => expect(screen.getByText('たまねぎ')).toBeDefined())
-  expect(screen.getByText('牛乳')).toBeDefined()
-  expect(screen.queryByText('食パン')).toBeNull()
-  expect(screen.queryByText('豚こま')).toBeNull()
+  // 画面に出ていないものは消せない。載せるなら全部出す。
+  await waitFor(() => expect(screen.getByLabelText('牛乳を消す')).toBeDefined())
+  for (const name of ['卵', 'たまねぎ', '豚こま', '食パン']) {
+    expect(screen.getByLabelText(`${name}を消す`)).toBeDefined()
+  }
 })
 
 test('レシートを読んでも冷蔵庫の残り物の回答は変えない。レシートは残り物を知らないため', async () => {
@@ -302,4 +304,21 @@ test('URLを書き換えても demo=1 は消さない。消すと会場の保険
   fireEvent.click(screen.getByRole('button', { name: '炊いた' }))
 
   expect(new URLSearchParams(window.location.search).get('demo')).toBe('1')
+})
+
+test('リセットは答えだけ消す。在庫は残るので撮り直さなくていい', async () => {
+  stubFetch(200, { ingredients: ['牛乳', 'にんじん'] })
+  render(<DinnerDecider />)
+
+  pickReceipt()
+  await waitFor(() => expect(screen.getByLabelText('牛乳を消す')).toBeDefined())
+  fireEvent.click(screen.getByRole('button', { name: '炊いた' }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'リセット' }))
+
+  expect(screen.getByRole('button', { name: '炊いた' }).getAttribute('aria-pressed')).toBe('false')
+  expect(screen.getByLabelText('牛乳を消す')).toBeDefined()
+  const q = new URLSearchParams(window.location.search)
+  expect(q.get('r')).toBeNull()
+  expect(q.get('i')).toBe('牛乳,にんじん')
 })

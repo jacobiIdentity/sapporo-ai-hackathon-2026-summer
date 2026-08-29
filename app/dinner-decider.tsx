@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
-import { shrinkToDataUrl } from '@/lib/image'
+import { shrinkToBase64 } from '@/lib/image'
 import { sentenceFor } from '@/lib/sentence'
 import { INITIAL_STOCK, stockQuery, type Stock } from '@/lib/stock'
 
@@ -136,7 +136,7 @@ export default function DinnerDecider({
     setScanning(true)
     setScanError('none')
     try {
-      const image = await shrinkToDataUrl(file)
+      const image = await shrinkToBase64(file)
       const res = await fetch('/api/receipt', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -199,10 +199,15 @@ export default function DinnerDecider({
           label="できている料理"
           items={stock.dishes}
           onRemove={(name) => {
-            const dishes = stock.dishes.filter((i) => i !== name)
-            setStock((p) => ({ ...p, dishes }))
             // 在庫を触った瞬間だけ回答に落とす。初期表示では埋めない（URLの状態を上書きしないため）。
             // 以後もトグルは自由に押し直せる。
+            //
+            // ponytail: この描画時点の stock から在庫と回答の両方を作る。関数形と混ぜると
+            // 同時更新に強いように見えて、実際は update() 側が古い値を見るので揃えてある。
+            // 同一タスク内の連続クリックは取りこぼす（実ユーザーのクリックは別タスクなので起きない）。
+            // 起きるようになったら leftovers を stock からの派生値にする。
+            const dishes = stock.dishes.filter((i) => i !== name)
+            setStock({ ...stock, dishes })
             update('leftovers', dishes.length > 0)
           }}
         />
@@ -479,12 +484,12 @@ function StockRow({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-faint">{`${label}（上位3つ）`}</p>
+      <p className="text-xs text-faint">{label}</p>
       {items.length === 0 ? (
         <p className="text-sm text-muted">なくなりました</p>
       ) : (
         <ul className="-mr-4 flex flex-nowrap gap-2 overflow-x-auto pr-4">
-          {items.slice(0, 3).map((name) => (
+          {items.map((name) => (
             <li
               key={name}
               className="inline-flex h-9 flex-none items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm"
@@ -502,13 +507,6 @@ function StockRow({
               </button>
             </li>
           ))}
-          {/* 上位3つだけ出している。続きがあることだけ示す。 */}
-          <li
-            aria-hidden="true"
-            className="inline-flex h-9 flex-none items-center px-2 text-sm text-faint"
-          >
-            …
-          </li>
         </ul>
       )}
     </div>

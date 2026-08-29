@@ -30,7 +30,7 @@ export function fitWithin(
 }
 
 /** 画像ファイルを、base64（データURLの接頭辞なし）のJPEGにして返す。 */
-export async function shrinkToDataUrl(file: File): Promise<ShrunkImage> {
+export async function shrinkToBase64(file: File): Promise<ShrunkImage> {
   const url = URL.createObjectURL(file)
   try {
     const image = await load(url)
