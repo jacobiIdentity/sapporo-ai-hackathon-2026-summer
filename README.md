@@ -110,7 +110,8 @@ lib/decide.ts             判断ロジックと問い合わせ層（純粋関数
 lib/sentence.ts           結論 → 固定の一文（表を引くだけ）
 lib/sentences.json        事前生成した7件（レビュー済み・コミット対象）
 lib/rate-limit.ts         スライディングウィンドウのレート制限
-lib/receipt.ts            レシート読み取り結果の正規化
+lib/receipt.ts            品目名の正規化（読み取りと共有URLの両方が通る）
+lib/stock.ts              在庫の型・初期値と、URLとの相互変換
 lib/image.ts              写真の縮小（canvas）
 app/page.tsx              URLを読む Server Component
 app/dinner-decider.tsx    画面本体
@@ -119,7 +120,7 @@ app/api/receipt/route.ts  レシート画像の読み取り（実行時LLM）
 scripts/build-sentences.mjs  一文の再生成（開発時のみ）
 ```
 
-テストは77件。`lib/*.test.ts` と `__tests__/` に同居。
+テストは96件。`lib/*.test.ts` と `__tests__/` に同居。
 
 Next.js 16 App Router / React 19 / TypeScript / Tailwind CSS v4 / Vitest /
 Anthropic SDK。自由文は `claude-opus-5`、レシートは `claude-haiku-4-5`
@@ -141,7 +142,7 @@ npm run dev
 検証:
 
 ```bash
-npm test        # 77件
+npm test        # 96件
 npm run lint
 npm run build
 ```
@@ -156,6 +157,12 @@ LLMを呼ばずに動かす（回線が不安なとき。自由文とレシー�
 
 ```
 /?demo=1
+```
+
+在庫つきで開く（材料と料理はカンマ区切り）:
+
+```
+/?i=牛乳,卵,たまねぎ&k=おにぎり弁当
 ```
 
 ---
@@ -174,6 +181,10 @@ LLMを呼ばずに動かす（回線が不安なとき。自由文とレシー�
 
 読み取りは外すことがある（品目の欠落、まれに存在しない品目）。
 チップは×で1つずつ消せる。デモでは `?demo=1` を使う。
+
+読み取った在庫はURLに載る（`i` と `k`）。妻が撮ってURLを送れば、夫の画面に同じ在庫が出る。
+DBは入れていない。在庫が初期のモックのままならURLに載せないので、
+触らない日のURLは62文字のまま。触った日だけ394文字になる。
 
 ---
 

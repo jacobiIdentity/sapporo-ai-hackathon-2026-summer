@@ -24,14 +24,15 @@
 |---|---|
 | 本番 | https://sapporo-ai-hackathon-2026-summer.vercel.app/ |
 | GitHub | https://github.com/jacobiIdentity/sapporo-ai-hackathon-2026-summer （public） |
-| HEAD | `a240dae` |
-| 検証 | テスト77件 / lint / build すべてグリーン、作業ツリークリーン、本番全経路確認済み |
+| HEAD | `5a41a31` |
+| 検証 | テスト96件 / lint / build すべてグリーン、作業ツリークリーン、本番全経路確認済み |
 
 デモ用URL：
 
 ```
 ?h=now&l=1   2つ答えただけで決着する例（今日の芯）
 ?demo=1      LLMを呼ばず固定結果を返す（回線が不安なとき）
+?i=&k=       在庫。材料と料理をカンマ区切りで載せる
 ```
 
 `?demo=1` は自由文の読み取りとレシート読み取りの**両方**に効く。
@@ -79,7 +80,13 @@
 （URLに載っている回答を上書きしてしまうため）。反映は編集イベント1回きりなので、
 在庫が空でもトグルは手で押し直せる。デモでは料理を3つ消すと結論がその場で変わる。
 
-**7. URLが状態。** DB・認証・リアルタイム同期なし。共有はURLを送ること。
+**7. URLが状態。在庫も含む。** DB・認証・リアルタイム同期なし。共有はURLを送ること。
+在庫は `i`（材料）と `k`（できている料理）に**必ず一緒に**載せる。片方だけだと相手の画面で
+もう片方が初期モックのまま残り、共有された在庫に見える。空文字は「全部消した」を意味し、
+無ければ「共有されていない」＝初期モック。ここを取り違えると結論が変わる。
+
+初期モックのままならURLに載せない。買い物は数日に1回、夕食の判断は毎日なので、
+在庫を触らない日の方が多い。その日は62文字、触った日は394文字。LINEに貼る前提の判断。
 
 **8. 依存を増やさない。** UIライブラリ・状態管理・ORM・アイコン等は入れていない。
 
@@ -92,7 +99,8 @@ lib/decide.ts               判断ルール（decide）と問い合わせ層（r
 lib/sentence.ts             結論 → 固定の一文
 lib/sentences.json          事前生成した7件。人がレビューしてコミットするもの
 lib/rate-limit.ts           スライディングウィンドウ、clientKey、tooMany（2ルート共通）
-lib/receipt.ts              レシート読み取り結果の正規化
+lib/receipt.ts              品目名の正規化（cleanNames）。読み取りと共有URLの両方が通る
+lib/stock.ts                在庫の型・初期値と、URLとの相互変換
 lib/image.ts                写真の縮小（canvas）。fitWithin は純粋関数
 app/page.tsx                searchParams を読む Server Component
 app/dinner-decider.tsx      画面本体（唯一のClient Component）
@@ -101,7 +109,7 @@ app/api/receipt/route.ts    レシート画像の読み取り。実行時LLM（c
 scripts/build-sentences.mjs 一文の再生成（開発時のみ）
 ```
 
-テストは `lib/*.test.ts` と `__tests__/` に同居、計77件。
+テストは `lib/*.test.ts` と `__tests__/` に同居、計96件。
 
 ---
 
@@ -137,6 +145,12 @@ npx vercel deploy --prod
   （`output_config.format`）で形を固定してある。`image_input` は対応。
 - **レート制限が先に効くので本番で400を確認できないことがある。** `/api/receipt` は
   4回/分。curlを連続で叩くと5回目から429になる。入力検証のテストはユニット側にある。
+- **参照比較は Server Component の境界を越えられない。** `page.tsx` から props で渡した
+  オブジェクトはシリアライズされ、クライアントでは別オブジェクトになる。
+  `stock === INITIAL_STOCK` で「触られたか」を判定して誤作動させた。中身で比べること。
+  **jsdom のテストは同じ参照を使うので素通りする。** ブラウザで開いて初めて分かった。
+- **URLを書き換えるときは、既存のクエリを土台にする。** クエリ全体を作り直すと
+  `?demo=1` が最初のタップで消える。会場の保険が外れていた（修正済み、テストで固定）。
 - **コミット著者は noreply に書き換え済み。** `git config user.email` はこのリポジトリで設定済み。
   グローバルは旧アドレスのままなので、他リポジトリでは注意。
 
