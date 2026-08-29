@@ -110,3 +110,29 @@ export function decide(facts: Facts): Decision {
     actions: ['妻：出前を注文する', '夫：まっすぐ帰る'],
   }
 }
+
+/**
+ * 自由文の読み取り結果（LLM応答）を Facts に変換する。
+ *
+ * 読み取れなかった項目は null のまま残す＝トグルは未選択のままなので、
+ * 読み取りが外れても手で選び直せる。decide() の判断ルールには関与しない。
+ */
+export function normalizeParsed(raw: unknown): Facts {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
+
+  const bool = (v: unknown): boolean | null =>
+    v === 1 || v === true ? true : v === 0 || v === false ? false : null
+
+  const hunger = (v: unknown): Hunger | null =>
+    v === 'now' ? 'now'
+    : v === '30' || v === 'soon' ? 'soon'
+    : v === 'ok' || v === 'later' ? 'later'
+    : null
+
+  return {
+    riceCooked: bool(o.r),
+    hunger: hunger(o.h),
+    leftovers: bool(o.l),
+    detour: bool(o.d),
+  }
+}

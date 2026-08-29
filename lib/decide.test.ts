@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { decide, type Facts } from './decide'
+import { decide, normalizeParsed, type Facts } from './decide'
 
 const blank: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
 
@@ -62,5 +62,56 @@ describe('揃った瞬間に結論が出る', () => {
     if (r.status !== 'decided') return
     expect(r.reason.length).toBeGreaterThan(0)
     expect(r.actions.length).toBeGreaterThan(0)
+  })
+})
+
+describe('自由文から読み取った結果を、トグルの状態に変換する', () => {
+  test('4つ揃った応答をそのまま反映する', () => {
+    expect(normalizeParsed({ r: 0, h: 'now', l: 1, d: 1 })).toEqual({
+      riceCooked: false,
+      hunger: 'now',
+      leftovers: true,
+      detour: true,
+    })
+  })
+
+  test('読み取れなかった項目は null のまま残す（トグルを未選択で残すため）', () => {
+    expect(normalizeParsed({ r: 1, h: null })).toEqual({
+      riceCooked: true,
+      hunger: null,
+      leftovers: null,
+      detour: null,
+    })
+  })
+
+  test('空腹度は now/30/ok と now/soon/later の両方を受ける', () => {
+    expect(normalizeParsed({ h: '30' }).hunger).toBe('soon')
+    expect(normalizeParsed({ h: 'soon' }).hunger).toBe('soon')
+    expect(normalizeParsed({ h: 'ok' }).hunger).toBe('later')
+    expect(normalizeParsed({ h: 'later' }).hunger).toBe('later')
+  })
+
+  test('想定外の値は捨てて null にする', () => {
+    expect(normalizeParsed({ r: 'たぶん', h: 'ぺこぺこ', l: 2, d: {} })).toEqual({
+      riceCooked: null,
+      hunger: null,
+      leftovers: null,
+      detour: null,
+    })
+  })
+
+  test('JSONでないものを渡されても落ちない', () => {
+    expect(normalizeParsed(null)).toEqual({
+      riceCooked: null,
+      hunger: null,
+      leftovers: null,
+      detour: null,
+    })
+    expect(normalizeParsed('壊れた応答')).toEqual({
+      riceCooked: null,
+      hunger: null,
+      leftovers: null,
+      detour: null,
+    })
   })
 })
