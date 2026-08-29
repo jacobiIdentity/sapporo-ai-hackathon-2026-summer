@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { LABEL, OWNER, resolve, type FactKey, type Facts } from '@/lib/decide'
+import { shrinkToDataUrl } from '@/lib/image'
 import { sentenceFor } from '@/lib/sentence'
 
 const EMPTY: Facts = { riceCooked: null, hunger: null, leftovers: null, detour: null }
@@ -57,6 +58,8 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
   const [memo, setMemo] = useState('')
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<'none' | 'failed' | 'busy'>('none')
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState<'none' | 'failed' | 'busy' | 'empty'>('none')
 
   const update = useCallback(<K extends FactKey>(key: K, value: Facts[K]) => {
     setFacts((prev) => {
@@ -104,6 +107,45 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
     }
   }
 
+  /**
+   * レシートの写真から材料を入れ替える。
+   *
+   * 埋まるのは材料だけで、冷蔵庫の残り物には触らない。
+   * レシートは買ったものしか写しておらず、何を作って何が残っているかを知らないため。
+   * 読み取りは外すことがあるので、結果はチップの×で1つずつ消せるままにしてある。
+   */
+  const scan = async (file: File) => {
+    setScanning(true)
+    setScanError('none')
+    try {
+      const image = await shrinkToDataUrl(file)
+      const res = await fetch('/api/receipt', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...image,
+          demo: new URLSearchParams(window.location.search).get('demo') === '1',
+        }),
+      })
+      if (res.status === 429) {
+        setScanError('busy')
+        return
+      }
+      if (!res.ok) throw new Error(String(res.status))
+      const { ingredients } = (await res.json()) as { ingredients: string[] }
+      // 読み取れなかっただけなので、いまある在庫は消さない。
+      if (ingredients.length === 0) {
+        setScanError('empty')
+        return
+      }
+      setStock((p) => ({ ...p, ingredients }))
+    } catch {
+      setScanError('failed')
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const share = async () => {
     await navigator.clipboard.writeText(window.location.href)
     setCopied(true)
@@ -146,6 +188,38 @@ export default function DinnerDecider({ initialFacts = EMPTY }: { initialFacts?:
             update('leftovers', dishes.length > 0)
           }}
         />
+
+        <label
+          htmlFor="receipt"
+          className="inline-flex h-11 items-center justify-center self-start rounded-lg border border-line-strong bg-surface px-4 text-[15px] font-medium"
+        >
+          レシートを撮る
+        </label>
+        <input
+          id="receipt"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          disabled={scanning}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            // 同じ写真をもう一度選べるようにする。
+            e.target.value = ''
+            if (file) scan(file)
+          }}
+          className="sr-only"
+        />
+        <p aria-live="polite" className="text-xs text-muted">
+          {scanning
+            ? '読み取っています…'
+            : scanError === 'busy'
+              ? '読み取りの回数制限に達しました。少し待つか、そのまま手で消してください。'
+              : scanError === 'failed'
+                ? '読み取れませんでした。材料は手で消せます。'
+                : scanError === 'empty'
+                  ? '食材が見つかりませんでした。撮り直すか、手で消してください。'
+                  : 'レシートを撮ると材料が入れ替わります。違っていたら×で消せます。'}
+        </p>
       </section>
 
       <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
@@ -395,7 +469,7 @@ function StockRow({
         <p className="text-sm text-muted">なくなりました</p>
       ) : (
         <ul className="-mr-4 flex flex-nowrap gap-2 overflow-x-auto pr-4">
-          {items.map((name) => (
+          {items.slice(0, 3).map((name) => (
             <li
               key={name}
               className="inline-flex h-9 flex-none items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm"
@@ -407,7 +481,7 @@ function StockRow({
                 aria-label={`${name}を消す`}
                 className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-full text-faint"
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />
                 </svg>
               </button>

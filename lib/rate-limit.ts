@@ -51,3 +51,16 @@ export function createLimiter({
   limiter.size = () => hits.size
   return limiter
 }
+
+/** Vercelは x-forwarded-for に実クライアントIPを入れる。無ければ全員同じ枠に入る。 */
+export function clientKey(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for')
+  return xff?.split(',')[0]?.trim() || 'unknown'
+}
+
+export function tooMany(retryAfterSec: number): Response {
+  return Response.json(
+    { error: 'rate_limited', retryAfterSec },
+    { status: 429, headers: { 'retry-after': String(retryAfterSec) } },
+  )
+}

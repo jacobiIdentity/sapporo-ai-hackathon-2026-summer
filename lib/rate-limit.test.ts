@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { createLimiter } from './rate-limit'
+import { clientKey, createLimiter, tooMany } from './rate-limit'
 
 describe('レート制限', () => {
   test('上限までは通る', () => {
@@ -40,5 +40,34 @@ describe('レート制限', () => {
     for (let i = 0; i < 5000; i++) limit(`k${i}`, i)
     // 上限を超えて溜め込まない
     expect(limit.size()).toBeLessThanOrEqual(10)
+  })
+})
+
+describe('clientKey', () => {
+  const withHeaders = (headers: Record<string, string>) =>
+    new Request('http://localhost/', { headers })
+
+  test('x-forwarded-for の先頭を使う。後ろはプロキシなので信用しない', () => {
+    expect(clientKey(withHeaders({ 'x-forwarded-for': '203.0.113.9, 70.41.3.18' }))).toBe(
+      '203.0.113.9',
+    )
+  })
+
+  test('前後の空白を落とす', () => {
+    expect(clientKey(withHeaders({ 'x-forwarded-for': ' 203.0.113.9 ' }))).toBe('203.0.113.9')
+  })
+
+  test('ヘッダが無ければ全員が同じ枠に入る。個別に緩めない', () => {
+    expect(clientKey(withHeaders({}))).toBe('unknown')
+    expect(clientKey(withHeaders({ 'x-forwarded-for': '' }))).toBe('unknown')
+  })
+})
+
+describe('tooMany', () => {
+  test('429と retry-after を返す', async () => {
+    const res = tooMany(42)
+    expect(res.status).toBe(429)
+    expect(res.headers.get('retry-after')).toBe('42')
+    expect(await res.json()).toEqual({ error: 'rate_limited', retryAfterSec: 42 })
   })
 })

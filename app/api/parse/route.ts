@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { normalizeParsed, type Facts } from '@/lib/decide'
-import { createLimiter } from '@/lib/rate-limit'
+import { clientKey, createLimiter, tooMany } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -9,19 +9,6 @@ const perClient = createLimiter({ limit: 8, windowMs: 60_000 })
 
 // 全体の上限。API課金を守るための最後の砦で、1人が回線を変えても効く。
 const overall = createLimiter({ limit: 120, windowMs: 60 * 60_000, maxKeys: 1 })
-
-/** Vercelは x-forwarded-for に実クライアントIPを入れる。無ければ全員同じ枠に入る。 */
-function clientKey(req: Request): string {
-  const xff = req.headers.get('x-forwarded-for')
-  return xff?.split(',')[0]?.trim() || 'unknown'
-}
-
-function tooMany(retryAfterSec: number) {
-  return Response.json(
-    { error: 'rate_limited', retryAfterSec },
-    { status: 429, headers: { 'retry-after': String(retryAfterSec) } },
-  )
-}
 
 const SYSTEM = `夫婦の夕食メモから、4項目だけを読み取ってJSONで返します。
 
